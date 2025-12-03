@@ -462,9 +462,9 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 	return device, nil
 }
 
-// ParseAerCounters scans predefined files in /sys/class/net/<iface>/device
+// parseAerCounters scans predefined files in /sys/class/net/<iface>/device
 // directory and gets their contents.
-func ParseAerCounters(devicePath string) (*AerCounters, error) {
+func parseAerCounters(devicePath string) (*AerCounters, error) {
 	counters := AerCounters{}
 	err := parseCorrectableAerCounters(devicePath, &counters.Correctable)
 	if err != nil {

@@ -12,7 +12,6 @@
 // limitations under the License.
 
 //go:build linux
-// +build linux
 
 package sysfs
 
@@ -22,8 +21,7 @@ import (
 
 // Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)
 // and the parsing functions (parseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
-// are defined in pci_device.go (same package, so accessible here).
-// AerCounters in this file embeds PciDeviceAerCounters and adds the Name field for network interfaces.
+// are defined in pci_device.go
 // This file maintains the public API methods for backward compatibility and delegates to the shared implementation in pci_device.go.
 
 // AerCountersByIface returns info for a single net interfaces (iface).

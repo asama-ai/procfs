@@ -20,10 +20,11 @@ import (
 	"path/filepath"
 )
 
-// Note: All AER types (CorrectableAerCounters, UncorrectableAerCounters, AerCounters, AllAerCounters)
-// and the parsing functions (ParseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
-// are defined in pci_device.go (same package, so accessible here). This file maintains the public API
-// methods for backward compatibility and delegates to the shared implementation in pci_device.go.
+// Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)
+// and the parsing functions (parseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
+// are defined in pci_device.go (same package, so accessible here).
+// AerCounters in this file embeds PciDeviceAerCounters and adds the Name field for network interfaces.
+// This file maintains the public API methods for backward compatibility and delegates to the shared implementation in pci_device.go.
 
 // AerCountersByIface returns info for a single net interfaces (iface).
 func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
@@ -33,11 +34,16 @@ func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 	}
 
 	path := fs.sys.Path(netclassPath)
-	counters, err := parseAerCounters(filepath.Join(path, devicePath))
+	Counters, err := parseAerCounters(filepath.Join(path, devicePath))
 	if err != nil {
 		return nil, err
 	}
-	counters.Name = devicePath
+
+	// Convert PciDeviceAerCounters to AerCounters by embedding and adding Name
+	counters := &AerCounters{
+		PciDeviceAerCounters: *Counters,
+		Name:                 devicePath,
+	}
 
 	return counters, nil
 }
@@ -52,13 +58,23 @@ func (fs FS) AerCounters() (AllAerCounters, error) {
 	path := fs.sys.Path(netclassPath)
 	allAerCounters := AllAerCounters{}
 	for _, devicePath := range devices {
-		counters, err := parseAerCounters(filepath.Join(path, devicePath))
+		Counters, err := parseAerCounters(filepath.Join(path, devicePath, "device"))
 		if err != nil {
 			return nil, err
 		}
-		counters.Name = devicePath
-		allAerCounters[devicePath] = *counters
+
+		// Convert PciDeviceAerCounters to AerCounters by embedding and adding Name
+		counters := AerCounters{
+			PciDeviceAerCounters: *Counters,
+			Name:                 devicePath,
+		}
+		allAerCounters[devicePath] = counters
 	}
 
 	return allAerCounters, nil
+}
+
+type AerCounters struct {
+	PciDeviceAerCounters
+	Name string // Interface name
 }

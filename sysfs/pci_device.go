@@ -99,8 +99,7 @@ type PciDevice struct {
 	PowerState    *PciPowerState // /sys/bus/pci/devices/<Location>/power_state
 }
 
-// CorrectableAerCounters contains values from /sys/class/net/<iface>/device/aer_dev_correctable
-// for single interface (iface).
+// CorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_correctable
 type CorrectableAerCounters struct {
 	RxErr       uint64
 	BadTLP      uint64
@@ -113,7 +112,7 @@ type CorrectableAerCounters struct {
 	TotalErrCor uint64 // TOTAL_ERR_COR from aer_dev_correctable
 }
 
-// UncorrectableAerCounters contains values from /sys/class/net/<iface>/device/aer_dev_[non]fatal
+// UncorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_[non]fatal
 // for single interface (iface).
 type UncorrectableAerCounters struct {
 	Undefined        uint64
@@ -138,10 +137,8 @@ type UncorrectableAerCounters struct {
 	TotalErrNonFatal uint64 // TOTAL_ERR_NONFATAL from aer_dev_nonfatal
 }
 
-// AerCounters contains AER counters from files in /sys/class/net/<iface>/device
-// for single interface (iface).
-type AerCounters struct {
-	Name                     string // Interface name
+// PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>
+type PciDeviceAerCounters struct {
 	Correctable              CorrectableAerCounters
 	Fatal                    UncorrectableAerCounters
 	NonFatal                 UncorrectableAerCounters
@@ -150,7 +147,7 @@ type AerCounters struct {
 	RootPortTotalErrNonFatal *uint64 // aer_rootport_total_err_nonfatal (optional, may not exist)
 }
 
-// AllAerCounters is collection of AER counters for every interface (iface) in /sys/class/net.
+// AllAerCounters is collection of AER counters for every interface (iface) in /sys/bus/pci/devices.
 // The map keys are interface (iface) names.
 type AllAerCounters map[string]AerCounters
 
@@ -464,23 +461,23 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 
 // parseAerCounters scans predefined files in /sys/class/net/<iface>/device
 // directory and gets their contents.
-func parseAerCounters(devicePath string) (*AerCounters, error) {
-	counters := AerCounters{}
-	err := parseCorrectableAerCounters(devicePath, &counters.Correctable)
+func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
+	counters := PciDeviceAerCounters{}
+	err := parseCorrectableAerCounters(deviceDir, &counters.Correctable)
 	if err != nil {
 		return nil, err
 	}
-	err = parseUncorrectableAerCounters(devicePath, "fatal", &counters.Fatal)
+	err = parseUncorrectableAerCounters(deviceDir, "fatal", &counters.Fatal)
 	if err != nil {
 		return nil, err
 	}
-	err = parseUncorrectableAerCounters(devicePath, "nonfatal", &counters.NonFatal)
+	err = parseUncorrectableAerCounters(deviceDir, "nonfatal", &counters.NonFatal)
 	if err != nil {
 		return nil, err
 	}
 
 	// Parse root port error files (optional, may not exist)
-	err = parseRootPortAerCounters(devicePath, &counters)
+	err = parseRootPortAerCounters(deviceDir, &counters)
 	if err != nil {
 		return nil, err
 	}
@@ -488,10 +485,13 @@ func parseAerCounters(devicePath string) (*AerCounters, error) {
 	return &counters, nil
 }
 
+func (pci *PciDevice) AerCounters() (*PciDeviceAerCounters, error) {
+	return parseAerCounters(filepath.Join(pciDevicesPath, pci.Location.String()))
+}
+
 // parseRootPortAerCounters parses root port AER error counters from
 // /sys/class/net/<iface>/device/aer_rootport_total_err_* files.
-func parseRootPortAerCounters(devicePath string, counters *AerCounters) error {
-	deviceDir := filepath.Join(devicePath, "device")
+func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) error {
 
 	// Parse aer_rootport_total_err_cor
 	path := filepath.Join(deviceDir, "aer_rootport_total_err_cor")
@@ -558,8 +558,8 @@ func parseRootPortAerCounters(devicePath string, counters *AerCounters) error {
 
 // parseCorrectableAerCounters parses correctable error counters in
 // /sys/class/net/<iface>/device/aer_dev_correctable.
-func parseCorrectableAerCounters(devicePath string, counters *CorrectableAerCounters) error {
-	path := filepath.Join(devicePath, "device", "aer_dev_correctable")
+func parseCorrectableAerCounters(deviceDir string, counters *CorrectableAerCounters) error {
+	path := filepath.Join(deviceDir, "aer_dev_correctable")
 	value, err := util.SysReadFile(path)
 	if err != nil {
 		if canIgnoreError(err) {
@@ -611,9 +611,9 @@ func parseCorrectableAerCounters(devicePath string, counters *CorrectableAerCoun
 
 // parseUncorrectableAerCounters parses uncorrectable error counters in
 // /sys/class/net/<iface>/device/aer_dev_[non]fatal.
-func parseUncorrectableAerCounters(devicePath string, counterType string,
+func parseUncorrectableAerCounters(deviceDir string, counterType string,
 	counters *UncorrectableAerCounters) error {
-	path := filepath.Join(devicePath, "device", "aer_dev_"+counterType)
+	path := filepath.Join(deviceDir, "aer_dev_"+counterType)
 	value, err := util.ReadFileNoStat(path)
 	if err != nil {
 		if canIgnoreError(err) {

@@ -62,6 +62,7 @@ func TestAerCounters(t *testing.T) {
 					NonFatalErr: 6,
 					CorrIntErr:  7,
 					HeaderOF:    8,
+					TotalErrCor: 36,
 				},
 				Fatal: UncorrectableAerCounters{
 					Undefined:        10,
@@ -82,6 +83,7 @@ func TestAerCounters(t *testing.T) {
 					AtomicOpBlocked:  25,
 					TLPBlockedErr:    26,
 					PoisonTLPBlocked: 27,
+					TotalErrFatal:    270,
 				},
 				NonFatal: UncorrectableAerCounters{
 					Undefined:        30,
@@ -102,6 +104,7 @@ func TestAerCounters(t *testing.T) {
 					AtomicOpBlocked:  45,
 					TLPBlockedErr:    46,
 					PoisonTLPBlocked: 47,
+					TotalErrNonFatal: 470,
 				},
 			},
 		},

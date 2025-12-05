@@ -54,6 +54,7 @@ type UncorrectableAerCounters struct {
 	PoisonTLPBlocked uint64
 }
 
+// AllAerCounters is collection of AER counters for every interface (iface) in /sys/bus/pci/devices.
 func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 	counters := PciDeviceAerCounters{}
 	err := parseCorrectableAerCounters(deviceDir, &counters.Correctable)
@@ -81,7 +82,6 @@ func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 func (pci *PciDevice) AerCounters(fs FS) (*PciDeviceAerCounters, error) {
 	deviceName := fmt.Sprintf("%04x:%02x:%02x.%x", pci.Location.Segment, pci.Location.Bus, pci.Location.Device, pci.Location.Function)
 	deviceDir := fs.sys.Path(pciDevicesPath, deviceName)
-
 	return parseAerCounters(deviceDir)
 }
 

@@ -150,6 +150,7 @@ func TestPciDevices(t *testing.T) {
 		t.Fatalf("unexpected PciDevices (-want +got):\n%s", diff)
 	}
 }
+
 func TestParseDeviceLocation(t *testing.T) {
 	got, err := parsePciDeviceLocation("0001:9b:0c.0")
 	if err != nil {

@@ -58,6 +58,12 @@ func (pdl PciDeviceLocation) String() string {
 	return fmt.Sprintf("%04x:%02x:%02x:%x", pdl.Segment, pdl.Bus, pdl.Device, pdl.Function)
 }
 
+// DirectoryName returns the location in filesystem directory name format (with dot instead of last colon).
+// For example, "0000:01:00.0" instead of "0000:01:00:0".
+// func (pdl PciDeviceLocation) DirectoryName() string {
+// 	return fmt.Sprintf("%04x:%02x:%02x.%x", pdl.Segment, pdl.Bus, pdl.Device, pdl.Function)
+// }
+
 func (pdl PciDeviceLocation) Strings() []string {
 	return []string{
 		fmt.Sprintf("%04x", pdl.Segment),
@@ -98,6 +104,55 @@ type PciDevice struct {
 	D3coldAllowed *bool          // /sys/bus/pci/devices/<Location>/d3cold_allowed
 	PowerState    *PciPowerState // /sys/bus/pci/devices/<Location>/power_state
 }
+
+// CorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_correctable
+type CorrectableAerCounters struct {
+	RxErr       uint64
+	BadTLP      uint64
+	BadDLLP     uint64
+	Rollover    uint64
+	Timeout     uint64
+	NonFatalErr uint64
+	CorrIntErr  uint64
+	HeaderOF    uint64
+}
+
+// UncorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_[non]fatal
+// for single interface (iface).
+type UncorrectableAerCounters struct {
+	Undefined        uint64
+	DLP              uint64
+	SDES             uint64
+	TLP              uint64
+	FCP              uint64
+	CmpltTO          uint64
+	CmpltAbrt        uint64
+	UnxCmplt         uint64
+	RxOF             uint64
+	MalfTLP          uint64
+	ECRC             uint64
+	UnsupReq         uint64
+	ACSViol          uint64
+	UncorrIntErr     uint64
+	BlockedTLP       uint64
+	AtomicOpBlocked  uint64
+	TLPBlockedErr    uint64
+	PoisonTLPBlocked uint64
+}
+
+// PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>
+type PciDeviceAerCounters struct {
+	Correctable              CorrectableAerCounters
+	Fatal                    UncorrectableAerCounters
+	NonFatal                 UncorrectableAerCounters
+	RootPortTotalErrCor      uint64 // aer_rootport_total_err_cor
+	RootPortTotalErrFatal    uint64 // aer_rootport_total_err_fatal
+	RootPortTotalErrNonFatal uint64 // aer_rootport_total_err_nonfatal
+}
+
+// AllAerCounters is collection of AER counters for every interface (iface) in /sys/bus/pci/devices.
+// The map keys are interface (iface) names.
+type AllAerCounters map[string]AerCounters
 
 func (pd PciDevice) Name() string {
 	return pd.Location.String()
@@ -301,7 +356,7 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 		valueStr, err := util.SysReadFile(name)
 		if err != nil {
 			if os.IsNotExist(err) {
-				continue // SR-IOV files are optional
+				continue
 			}
 			return nil, fmt.Errorf("failed to read SR-IOV file %q %s: %w", name, device.Location, err)
 		}
@@ -377,7 +432,7 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 		valueStr, err := util.SysReadFile(name)
 		if err != nil {
 			if os.IsNotExist(err) {
-				continue // Power management files are optional
+				continue
 			}
 			return nil, fmt.Errorf("failed to read power management file %q %s: %w", name, device.Location, err)
 		}
@@ -405,4 +460,222 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 	}
 
 	return device, nil
+}
+
+// parseAerCounters scans predefined files in /sys/bus/pci/devices/<location> directory and gets their contents.
+func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
+	counters := PciDeviceAerCounters{}
+	err := parseCorrectableAerCounters(deviceDir, &counters.Correctable)
+	if err != nil {
+		return nil, err
+	}
+	err = parseUncorrectableAerCounters(deviceDir, "fatal", &counters.Fatal)
+	if err != nil {
+		return nil, err
+	}
+	err = parseUncorrectableAerCounters(deviceDir, "nonfatal", &counters.NonFatal)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseRootPortAerCounters(deviceDir, &counters)
+	if err != nil {
+		return nil, err
+	}
+
+	return &counters, nil
+}
+
+func (pci *PciDevice) AerCounters(fs FS) (*PciDeviceAerCounters, error) {
+	deviceName := fmt.Sprintf("%04x:%02x:%02x.%x", pci.Location.Segment, pci.Location.Bus, pci.Location.Device, pci.Location.Function)
+	deviceDir := fs.sys.Path(pciDevicesPath, deviceName)
+
+	return parseAerCounters(deviceDir)
+}
+
+// parseRootPortAerCounters parses root port AER error counters from
+// /sys/bus/pci/devices/<location>/aer_rootport_total_err_* files.
+func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) error {
+
+	// Parse aer_rootport_total_err_cor
+	path := filepath.Join(deviceDir, "aer_rootport_total_err_cor")
+	value, err := util.SysReadFile(path)
+	if err != nil {
+		if canIgnoreError(err) {
+		} else {
+			return fmt.Errorf("failed to read file %q: %w", path, err)
+		}
+	} else {
+		valueStr := strings.TrimSpace(string(value))
+		if valueStr != "" {
+			v, err := strconv.ParseUint(valueStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("error parsing aer_rootport_total_err_cor: %w", err)
+			}
+			counters.RootPortTotalErrCor = v
+		}
+	}
+
+	// Parse aer_rootport_total_err_fatal
+	path = filepath.Join(deviceDir, "aer_rootport_total_err_fatal")
+	value, err = util.SysReadFile(path)
+	if err != nil {
+		if canIgnoreError(err) {
+		} else {
+			return fmt.Errorf("failed to read file %q: %w", path, err)
+		}
+	} else {
+		valueStr := strings.TrimSpace(string(value))
+		if valueStr != "" {
+			v, err := strconv.ParseUint(valueStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("error parsing aer_rootport_total_err_fatal: %w", err)
+			}
+			counters.RootPortTotalErrFatal = v
+		}
+	}
+
+	// Parse aer_rootport_total_err_nonfatal
+	path = filepath.Join(deviceDir, "aer_rootport_total_err_nonfatal")
+	value, err = util.SysReadFile(path)
+	if err != nil {
+		if canIgnoreError(err) {
+		} else {
+			return fmt.Errorf("failed to read file %q: %w", path, err)
+		}
+	} else {
+		valueStr := strings.TrimSpace(string(value))
+		if valueStr != "" {
+			v, err := strconv.ParseUint(valueStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("error parsing aer_rootport_total_err_nonfatal: %w", err)
+			}
+			counters.RootPortTotalErrNonFatal = v
+		}
+	}
+
+	return nil
+}
+
+// parseCorrectableAerCounters parses correctable error counters in
+// /sys/bus/pci/devices/<location>/aer_dev_correctable.
+func parseCorrectableAerCounters(deviceDir string, counters *CorrectableAerCounters) error {
+	path := filepath.Join(deviceDir, "aer_dev_correctable")
+	value, err := util.SysReadFile(path)
+	if err != nil {
+		if canIgnoreError(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to read file %q: %w", path, err)
+	}
+
+	for line := range strings.SplitSeq(string(value), "\n") {
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return fmt.Errorf("unexpected number of fields: %v", fields)
+		}
+		counterName := fields[0]
+		value, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing value for %s: %w", counterName, err)
+		}
+
+		switch counterName {
+		case "RxErr":
+			counters.RxErr = value
+		case "BadTLP":
+			counters.BadTLP = value
+		case "BadDLLP":
+			counters.BadDLLP = value
+		case "Rollover":
+			counters.Rollover = value
+		case "Timeout":
+			counters.Timeout = value
+		case "NonFatalErr":
+			counters.NonFatalErr = value
+		case "CorrIntErr":
+			counters.CorrIntErr = value
+		case "HeaderOF":
+			counters.HeaderOF = value
+		default:
+			continue
+		}
+	}
+
+	return nil
+}
+
+// parseUncorrectableAerCounters parses uncorrectable error counters in
+// /sys/bus/pci/devices/<location>/aer_dev_[non]fatal.
+func parseUncorrectableAerCounters(deviceDir string, counterType string,
+	counters *UncorrectableAerCounters) error {
+	path := filepath.Join(deviceDir, "aer_dev_"+counterType)
+	value, err := util.ReadFileNoStat(path)
+	if err != nil {
+		if canIgnoreError(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to read file %q: %w", path, err)
+	}
+
+	for line := range strings.SplitSeq(string(value), "\n") {
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return fmt.Errorf("unexpected number of fields: %v", fields)
+		}
+		counterName := fields[0]
+		value, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing value for %s: %w", counterName, err)
+		}
+
+		switch counterName {
+		case "Undefined":
+			counters.Undefined = value
+		case "DLP":
+			counters.DLP = value
+		case "SDES":
+			counters.SDES = value
+		case "TLP":
+			counters.TLP = value
+		case "FCP":
+			counters.FCP = value
+		case "CmpltTO":
+			counters.CmpltTO = value
+		case "CmpltAbrt":
+			counters.CmpltAbrt = value
+		case "UnxCmplt":
+			counters.UnxCmplt = value
+		case "RxOF":
+			counters.RxOF = value
+		case "MalfTLP":
+			counters.MalfTLP = value
+		case "ECRC":
+			counters.ECRC = value
+		case "UnsupReq":
+			counters.UnsupReq = value
+		case "ACSViol":
+			counters.ACSViol = value
+		case "UncorrIntErr":
+			counters.UncorrIntErr = value
+		case "BlockedTLP":
+			counters.BlockedTLP = value
+		case "AtomicOpBlocked":
+			counters.AtomicOpBlocked = value
+		case "TLPBlockedErr":
+			counters.TLPBlockedErr = value
+		case "PoisonTLPBlocked":
+			counters.PoisonTLPBlocked = value
+		default:
+			continue
+		}
+	}
+
+	return nil
 }

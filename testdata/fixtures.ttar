@@ -8124,21 +8124,6 @@ TLPBlockedErr 43
 PoisonTLPBlocked 44
 Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/0000:01:00.0/aer_rootport_total_err_cor
-Lines: 1
-0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/0000:01:00.0/aer_rootport_total_err_fatal
-Lines: 1
-0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/0000:01:00.0/aer_rootport_total_err_nonfatal
-Lines: 1
-0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/0000:01:00.0/ari_enabled
 Lines: 1
 1

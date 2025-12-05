@@ -29,6 +29,10 @@ type AerCounters struct {
 // are defined in pci_device.go
 // This file maintains the public API methods for backward compatibility and delegates to the shared implementation in pci_device.go.
 
+// AllAerCounters is collection of AER counters for every interface (iface) in /sys/class/net.
+// The map keys are interface (iface) names.
+type AllAerCounters map[string]AerCounters
+
 // AerCountersByIface returns info for a single net interfaces (iface).
 func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 	_, err := fs.NetClassByIface(devicePath)

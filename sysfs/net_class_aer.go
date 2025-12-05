@@ -41,7 +41,7 @@ func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 	}
 
 	path := fs.sys.Path(netclassPath)
-	counters, err := parseAerCounters(filepath.Join(path, devicePath))
+	counters, err := parseAerCounters(filepath.Join(path, devicePath, "device"))
 	if err != nil {
 		return nil, err
 	}

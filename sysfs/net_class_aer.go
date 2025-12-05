@@ -20,8 +20,8 @@ import (
 )
 
 type AerCounters struct {
-	PciDeviceAerCounters
 	Name string // Interface name
+	PciDeviceAerCounters
 }
 
 // Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)

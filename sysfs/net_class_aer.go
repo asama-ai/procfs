@@ -16,7 +16,6 @@
 package sysfs
 
 import (
-	"os"
 	"path/filepath"
 )
 
@@ -61,32 +60,12 @@ func (fs FS) AerCounters() (AllAerCounters, error) {
 	path := fs.sys.Path(netclassPath)
 	allAerCounters := AllAerCounters{}
 	for _, devicePath := range devices {
-		deviceDir := filepath.Join(path, devicePath, "device")
-		// Check if device directory exists
-		if _, err := os.Stat(deviceDir); err != nil {
-			if os.IsNotExist(err) {
-				// Device directory doesn't exist, skip this interface
-				continue
-			}
-			// Other error, return it
-			return nil, err
-		}
-		Counters, err := parseAerCounters(deviceDir)
+		pciCounters, err := parseAerCounters(filepath.Join(path, devicePath))
 		if err != nil {
-			// If it's a "not exist" error, skip this interface
-			if os.IsNotExist(err) {
-			continue
-		}
 			return nil, err
 		}
-		if Counters == nil {
-			// AER not supported for this device, skip
-			continue
-		}
-
-		// Convert PciDeviceAerCounters to AerCounters by embedding and adding Name
 		counters := AerCounters{
-			PciDeviceAerCounters: *Counters,
+			PciDeviceAerCounters: *pciCounters,
 			Name:                 devicePath,
 		}
 		allAerCounters[devicePath] = counters

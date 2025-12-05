@@ -58,12 +58,6 @@ func (pdl PciDeviceLocation) String() string {
 	return fmt.Sprintf("%04x:%02x:%02x:%x", pdl.Segment, pdl.Bus, pdl.Device, pdl.Function)
 }
 
-// DirectoryName returns the location in filesystem directory name format (with dot instead of last colon).
-// For example, "0000:01:00.0" instead of "0000:01:00:0".
-// func (pdl PciDeviceLocation) DirectoryName() string {
-// 	return fmt.Sprintf("%04x:%02x:%02x.%x", pdl.Segment, pdl.Bus, pdl.Device, pdl.Function)
-// }
-
 func (pdl PciDeviceLocation) Strings() []string {
 	return []string{
 		fmt.Sprintf("%04x", pdl.Segment),
@@ -152,7 +146,6 @@ type PciDeviceAerCounters struct {
 
 // AllAerCounters is collection of AER counters for every interface (iface) in /sys/bus/pci/devices.
 // The map keys are interface (iface) names.
-type AllAerCounters map[string]AerCounters
 
 func (pd PciDevice) Name() string {
 	return pd.Location.String()

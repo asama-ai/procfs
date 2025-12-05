@@ -19,6 +19,11 @@ import (
 	"path/filepath"
 )
 
+type AerCounters struct {
+	PciDeviceAerCounters
+	Name string // Interface name
+}
+
 // Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)
 // and the parsing functions (parseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
 // are defined in pci_device.go
@@ -72,9 +77,4 @@ func (fs FS) AerCounters() (AllAerCounters, error) {
 	}
 
 	return allAerCounters, nil
-}
-
-type AerCounters struct {
-	PciDeviceAerCounters
-	Name string // Interface name
 }

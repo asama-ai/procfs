@@ -134,16 +134,6 @@ type UncorrectableAerCounters struct {
 	PoisonTLPBlocked uint64
 }
 
-// PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>
-type PciDeviceAerCounters struct {
-	Correctable              CorrectableAerCounters
-	Fatal                    UncorrectableAerCounters
-	NonFatal                 UncorrectableAerCounters
-	RootPortTotalErrCor      uint64 // aer_rootport_total_err_cor
-	RootPortTotalErrFatal    uint64 // aer_rootport_total_err_fatal
-	RootPortTotalErrNonFatal uint64 // aer_rootport_total_err_nonfatal
-}
-
 // AllAerCounters is collection of AER counters for every interface (iface) in /sys/bus/pci/devices.
 // The map keys are interface (iface) names.
 

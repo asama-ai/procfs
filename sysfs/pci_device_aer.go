@@ -9,6 +9,51 @@ import (
 	"github.com/prometheus/procfs/internal/util"
 )
 
+// PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>
+type PciDeviceAerCounters struct {
+	Correctable              CorrectableAerCounters
+	Fatal                    UncorrectableAerCounters
+	NonFatal                 UncorrectableAerCounters
+	RootPortTotalErrCor      uint64 // aer_rootport_total_err_cor
+	RootPortTotalErrFatal    uint64 // aer_rootport_total_err_fatal
+	RootPortTotalErrNonFatal uint64 // aer_rootport_total_err_nonfatal
+}
+
+// CorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_correctable
+type CorrectableAerCounters struct {
+	RxErr       uint64
+	BadTLP      uint64
+	BadDLLP     uint64
+	Rollover    uint64
+	Timeout     uint64
+	NonFatalErr uint64
+	CorrIntErr  uint64
+	HeaderOF    uint64
+}
+
+// UncorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_[non]fatal
+// for single interface (iface).
+type UncorrectableAerCounters struct {
+	Undefined        uint64
+	DLP              uint64
+	SDES             uint64
+	TLP              uint64
+	FCP              uint64
+	CmpltTO          uint64
+	CmpltAbrt        uint64
+	UnxCmplt         uint64
+	RxOF             uint64
+	MalfTLP          uint64
+	ECRC             uint64
+	UnsupReq         uint64
+	ACSViol          uint64
+	UncorrIntErr     uint64
+	BlockedTLP       uint64
+	AtomicOpBlocked  uint64
+	TLPBlockedErr    uint64
+	PoisonTLPBlocked uint64
+}
+
 func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 	counters := PciDeviceAerCounters{}
 	err := parseCorrectableAerCounters(deviceDir, &counters.Correctable)

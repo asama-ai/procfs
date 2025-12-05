@@ -41,22 +41,20 @@ func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 	}
 
 	path := fs.sys.Path(netclassPath)
-	Counters, err := parseAerCounters(filepath.Join(path, devicePath))
+	counters, err := parseAerCounters(filepath.Join(path, devicePath))
 	if err != nil {
 		return nil, err
 	}
-	if Counters == nil {
+	if counters == nil {
 		// AER not supported for this device
 		return nil, nil
 	}
 
 	// Convert PciDeviceAerCounters to AerCounters by embedding and adding Name
-	counters := &AerCounters{
-		PciDeviceAerCounters: *Counters,
+	return &AerCounters{
+		PciDeviceAerCounters: *counters,
 		Name:                 devicePath,
-	}
-
-	return counters, nil
+	}, nil
 }
 
 // AerCounters returns AER counters for all net interfaces (iface) read from /sys/class/net/<iface>/device.

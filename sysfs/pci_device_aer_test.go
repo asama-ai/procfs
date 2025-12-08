@@ -183,13 +183,13 @@ func TestPciAerRootPortCounters(t *testing.T) {
 	rootPortTotalErrFatal := uint64(2)
 	rootPortTotalErrNonFatal := uint64(3)
 
-	if got.RootPortTotalErrCor != rootPortTotalErrCor {
+	if *got.RootPortTotalErrCor != rootPortTotalErrCor {
 		t.Errorf("RootPortTotalErrCor: want %d, got %d", rootPortTotalErrCor, got.RootPortTotalErrCor)
 	}
-	if got.RootPortTotalErrFatal != rootPortTotalErrFatal {
+	if *got.RootPortTotalErrFatal != rootPortTotalErrFatal {
 		t.Errorf("RootPortTotalErrFatal: want %d, got %d", rootPortTotalErrFatal, got.RootPortTotalErrFatal)
 	}
-	if got.RootPortTotalErrNonFatal != rootPortTotalErrNonFatal {
+	if *got.RootPortTotalErrNonFatal != rootPortTotalErrNonFatal {
 		t.Errorf("RootPortTotalErrNonFatal: want %d, got %d", rootPortTotalErrNonFatal, got.RootPortTotalErrNonFatal)
 	}
 }

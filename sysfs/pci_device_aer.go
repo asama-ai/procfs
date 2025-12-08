@@ -1,7 +1,9 @@
 package sysfs
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -14,9 +16,9 @@ type PciDeviceAerCounters struct {
 	Correctable              CorrectableAerCounters
 	Fatal                    UncorrectableAerCounters
 	NonFatal                 UncorrectableAerCounters
-	RootPortTotalErrCor      uint64 // aer_rootport_total_err_cor
-	RootPortTotalErrFatal    uint64 // aer_rootport_total_err_fatal
-	RootPortTotalErrNonFatal uint64 // aer_rootport_total_err_nonfatal
+	RootPortTotalErrCor      *uint64 // aer_rootport_total_err_cor (nil if file doesn't exist)
+	RootPortTotalErrFatal    *uint64 // aer_rootport_total_err_fatal (nil if file doesn't exist)
+	RootPortTotalErrNonFatal *uint64 // aer_rootport_total_err_nonfatal (nil if file doesn't exist)
 }
 
 // CorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_correctable
@@ -70,6 +72,7 @@ func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 		return nil, err
 	}
 
+	// Root port files are optional - parseRootPortAerCounters sets pointers to nil if files don't exist
 	err = parseRootPortAerCounters(deviceDir, &counters)
 	if err != nil {
 		return nil, err
@@ -82,18 +85,22 @@ func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 func (pci *PciDevice) AerCounters(fs FS) (*PciDeviceAerCounters, error) {
 	deviceName := fmt.Sprintf("%04x:%02x:%02x.%x", pci.Location.Segment, pci.Location.Bus, pci.Location.Device, pci.Location.Function)
 	deviceDir := fs.sys.Path(pciDevicesPath, deviceName)
+
 	return parseAerCounters(deviceDir)
 }
 
 // parseRootPortAerCounters parses root port AER error counters from
 // /sys/bus/pci/devices/<location>/aer_rootport_total_err_* files.
+// If a file doesn't exist, the corresponding pointer field is set to nil.
 func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) error {
 
 	// Parse aer_rootport_total_err_cor
 	path := filepath.Join(deviceDir, "aer_rootport_total_err_cor")
 	value, err := util.SysReadFile(path)
 	if err != nil {
-		if canIgnoreError(err) {
+		if errors.Is(err, os.ErrNotExist) {
+			// File doesn't exist, set to nil
+			counters.RootPortTotalErrCor = nil
 		} else {
 			return fmt.Errorf("failed to read file %q: %w", path, err)
 		}
@@ -104,7 +111,10 @@ func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) 
 			if err != nil {
 				return fmt.Errorf("error parsing aer_rootport_total_err_cor: %w", err)
 			}
-			counters.RootPortTotalErrCor = v
+			counters.RootPortTotalErrCor = &v
+		} else {
+			// Empty value, set to nil
+			counters.RootPortTotalErrCor = nil
 		}
 	}
 
@@ -112,7 +122,9 @@ func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) 
 	path = filepath.Join(deviceDir, "aer_rootport_total_err_fatal")
 	value, err = util.SysReadFile(path)
 	if err != nil {
-		if canIgnoreError(err) {
+		if errors.Is(err, os.ErrNotExist) {
+			// File doesn't exist, set to nil
+			counters.RootPortTotalErrFatal = nil
 		} else {
 			return fmt.Errorf("failed to read file %q: %w", path, err)
 		}
@@ -123,7 +135,10 @@ func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) 
 			if err != nil {
 				return fmt.Errorf("error parsing aer_rootport_total_err_fatal: %w", err)
 			}
-			counters.RootPortTotalErrFatal = v
+			counters.RootPortTotalErrFatal = &v
+		} else {
+			// Empty value, set to nil
+			counters.RootPortTotalErrFatal = nil
 		}
 	}
 
@@ -131,7 +146,9 @@ func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) 
 	path = filepath.Join(deviceDir, "aer_rootport_total_err_nonfatal")
 	value, err = util.SysReadFile(path)
 	if err != nil {
-		if canIgnoreError(err) {
+		if errors.Is(err, os.ErrNotExist) {
+			// File doesn't exist, set to nil
+			counters.RootPortTotalErrNonFatal = nil
 		} else {
 			return fmt.Errorf("failed to read file %q: %w", path, err)
 		}
@@ -142,7 +159,10 @@ func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) 
 			if err != nil {
 				return fmt.Errorf("error parsing aer_rootport_total_err_nonfatal: %w", err)
 			}
-			counters.RootPortTotalErrNonFatal = v
+			counters.RootPortTotalErrNonFatal = &v
+		} else {
+			// Empty value, set to nil
+			counters.RootPortTotalErrNonFatal = nil
 		}
 	}
 
@@ -155,9 +175,6 @@ func parseCorrectableAerCounters(deviceDir string, counters *CorrectableAerCount
 	path := filepath.Join(deviceDir, "aer_dev_correctable")
 	value, err := util.SysReadFile(path)
 	if err != nil {
-		if canIgnoreError(err) {
-			return nil
-		}
 		return fmt.Errorf("failed to read file %q: %w", path, err)
 	}
 
@@ -207,9 +224,6 @@ func parseUncorrectableAerCounters(deviceDir string, counterType string,
 	path := filepath.Join(deviceDir, "aer_dev_"+counterType)
 	value, err := util.ReadFileNoStat(path)
 	if err != nil {
-		if canIgnoreError(err) {
-			return nil
-		}
 		return fmt.Errorf("failed to read file %q: %w", path, err)
 	}
 

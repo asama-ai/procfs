@@ -9908,20 +9908,76 @@ Lines: 1
 0xc0a9
 Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/aer_dev_correctable
+Lines: 8
+RxErr 0
+BadTLP 0
+BadDLLP 0
+Rollover 0
+Timeout 0
+NonFatalErr 0
+CorrIntErr 0
+HeaderOF 0
+Mode: 400
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/aer_dev_fatal
+Lines: 18
+Undefined 0
+DLP 0
+SDES 0
+TLP 0
+FCP 0
+CmpltTO 0
+CmpltAbrt 0
+UnxCmplt 0
+RxOF 0
+MalfTLP 0
+ECRC 0
+UnsupReq 0
+ACSViol 0
+UncorrIntErr 0
+BlockedTLP 0
+AtomicOpBlocked 0
+TLPBlockedErr 0
+PoisonTLPBlocked 0
+Mode: 400
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/aer_dev_nonfatal
+Lines: 18
+Undefined 0
+DLP 0
+SDES 0
+TLP 0
+FCP 0
+CmpltTO 0
+CmpltAbrt 0
+UnxCmplt 0
+RxOF 0
+MalfTLP 0
+ECRC 0
+UnsupReq 0
+ACSViol 0
+UncorrIntErr 0
+BlockedTLP 0
+AtomicOpBlocked 0
+TLPBlockedErr 0
+PoisonTLPBlocked 0
+Mode: 400
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/aer_rootport_total_err_cor
 Lines: 1
 1
-Mode: 664
+Mode: 400
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/aer_rootport_total_err_fatal
 Lines: 1
 2
-Mode: 664
+Mode: 400
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/aer_rootport_total_err_nonfatal
 Lines: 1
 3
-Mode: 664
+Mode: 400
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:02.1/ari_enabled
 Lines: 1

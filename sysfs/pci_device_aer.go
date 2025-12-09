@@ -1,3 +1,18 @@
+// Copyright The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build linux
+
 package sysfs
 
 import (
@@ -11,7 +26,7 @@ import (
 	"github.com/prometheus/procfs/internal/util"
 )
 
-// PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>
+// PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>/
 type PciDeviceAerCounters struct {
 	Correctable              CorrectableAerCounters
 	Fatal                    UncorrectableAerCounters
@@ -34,7 +49,6 @@ type CorrectableAerCounters struct {
 }
 
 // UncorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_[non]fatal
-// for single interface (iface).
 type UncorrectableAerCounters struct {
 	Undefined        uint64
 	DLP              uint64
@@ -56,7 +70,9 @@ type UncorrectableAerCounters struct {
 	PoisonTLPBlocked uint64
 }
 
-// AllAerCounters is collection of AER counters for every interface (iface) in /sys/bus/pci/devices.
+// parseAerCounters parses AER counters from files in
+// /sys/bus/pci/devices/<Location>/ or /sys/class/<class_name>/<device_name>/device
+// and returns a PciDeviceAerCounters struct.
 func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 	counters := PciDeviceAerCounters{}
 	err := parseCorrectableAerCounters(deviceDir, &counters.Correctable)
@@ -93,76 +109,42 @@ func (pci *PciDevice) AerCounters(fs FS) (*PciDeviceAerCounters, error) {
 // /sys/bus/pci/devices/<location>/aer_rootport_total_err_* files.
 // If a file doesn't exist, the corresponding pointer field is set to nil.
 func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) error {
-
-	// Parse aer_rootport_total_err_cor
-	path := filepath.Join(deviceDir, "aer_rootport_total_err_cor")
-	value, err := util.SysReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			// File doesn't exist, set to nil
-			counters.RootPortTotalErrCor = nil
-		} else {
-			return fmt.Errorf("failed to read file %q: %w", path, err)
-		}
-	} else {
-		valueStr := strings.TrimSpace(string(value))
-		if valueStr != "" {
-			v, err := strconv.ParseUint(valueStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("error parsing aer_rootport_total_err_cor: %w", err)
-			}
-			counters.RootPortTotalErrCor = &v
-		} else {
-			// Empty value, set to nil
-			counters.RootPortTotalErrCor = nil
-		}
+	filenames := []string{
+		"aer_rootport_total_err_cor",
+		"aer_rootport_total_err_fatal",
+		"aer_rootport_total_err_nonfatal",
 	}
 
-	// Parse aer_rootport_total_err_fatal
-	path = filepath.Join(deviceDir, "aer_rootport_total_err_fatal")
-	value, err = util.SysReadFile(path)
-	if err != nil {
+	for _, filename := range filenames {
+		path := filepath.Join(deviceDir, filename)
+		value, err := util.SysReadFile(path)
+		var fieldValue *uint64
 		if errors.Is(err, os.ErrNotExist) {
 			// File doesn't exist, set to nil
-			counters.RootPortTotalErrFatal = nil
-		} else {
+			fieldValue = nil
+		} else if err != nil {
 			return fmt.Errorf("failed to read file %q: %w", path, err)
-		}
-	} else {
-		valueStr := strings.TrimSpace(string(value))
-		if valueStr != "" {
-			v, err := strconv.ParseUint(valueStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("error parsing aer_rootport_total_err_fatal: %w", err)
-			}
-			counters.RootPortTotalErrFatal = &v
 		} else {
-			// Empty value, set to nil
-			counters.RootPortTotalErrFatal = nil
+			valueStr := strings.TrimSpace(string(value))
+			if valueStr != "" {
+				v, err := strconv.ParseUint(valueStr, 10, 64)
+				if err != nil {
+					return fmt.Errorf("error parsing %s: %w", filename, err)
+				}
+				val := new(uint64)
+				*val = v
+				fieldValue = val
+			}
+			// If valueStr is empty, fieldValue remains nil
 		}
-	}
 
-	// Parse aer_rootport_total_err_nonfatal
-	path = filepath.Join(deviceDir, "aer_rootport_total_err_nonfatal")
-	value, err = util.SysReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			// File doesn't exist, set to nil
-			counters.RootPortTotalErrNonFatal = nil
-		} else {
-			return fmt.Errorf("failed to read file %q: %w", path, err)
-		}
-	} else {
-		valueStr := strings.TrimSpace(string(value))
-		if valueStr != "" {
-			v, err := strconv.ParseUint(valueStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("error parsing aer_rootport_total_err_nonfatal: %w", err)
-			}
-			counters.RootPortTotalErrNonFatal = &v
-		} else {
-			// Empty value, set to nil
-			counters.RootPortTotalErrNonFatal = nil
+		switch filename {
+		case "aer_rootport_total_err_cor":
+			counters.RootPortTotalErrCor = fieldValue
+		case "aer_rootport_total_err_fatal":
+			counters.RootPortTotalErrFatal = fieldValue
+		case "aer_rootport_total_err_nonfatal":
+			counters.RootPortTotalErrNonFatal = fieldValue
 		}
 	}
 

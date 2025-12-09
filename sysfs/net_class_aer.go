@@ -19,11 +19,6 @@ import (
 	"path/filepath"
 )
 
-// Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)
-// and the parsing functions (parseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
-// are moved to pci_device_aer.go
-// The public types (AerCounters, AllAerCounters) and their behavior are retained as is in this file for backward compatibility.
-
 // AerCounters contains AER counters from files in /sys/class/net/<iface>/device
 // for single interface (iface).
 type AerCounters struct {
@@ -35,7 +30,7 @@ type AerCounters struct {
 // The map keys are interface (iface) names.
 type AllAerCounters map[string]AerCounters
 
-// AerCountersByIface returns info for a single net interfaces (iface).
+// AerCounters returns info for a single net interfaces (iface).
 func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 	_, err := fs.NetClassByIface(devicePath)
 	if err != nil {

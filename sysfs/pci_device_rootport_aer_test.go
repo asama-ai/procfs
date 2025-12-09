@@ -38,7 +38,7 @@ func TestRootPortAerCounters(t *testing.T) {
 			TotalErrFatal:    2,
 			TotalErrNonFatal: 3,
 		},
-		"0000:00:03.1": RootPortAerCounters{
+		"0000:00:03.0": RootPortAerCounters{
 			TotalErrCor:      4,
 			TotalErrFatal:    5,
 			TotalErrNonFatal: 6,

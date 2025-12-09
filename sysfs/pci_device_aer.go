@@ -27,12 +27,9 @@ import (
 
 // PciDeviceAerCounters contains generic AER counters from files in /sys/bus/pci/devices/<Location>/
 type PciDeviceAerCounters struct {
-	Correctable              CorrectableAerCounters
-	Fatal                    UncorrectableAerCounters
-	NonFatal                 UncorrectableAerCounters
-	RootPortTotalErrCor      *uint64 // aer_rootport_total_err_cor (nil if file doesn't exist)
-	RootPortTotalErrFatal    *uint64 // aer_rootport_total_err_fatal (nil if file doesn't exist)
-	RootPortTotalErrNonFatal *uint64 // aer_rootport_total_err_nonfatal (nil if file doesn't exist)
+	Correctable CorrectableAerCounters
+	Fatal       UncorrectableAerCounters
+	NonFatal    UncorrectableAerCounters
 }
 
 // CorrectableAerCounters contains values from /sys/bus/pci/devices/<Location>/aer_dev_correctable
@@ -93,64 +90,20 @@ func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 		return nil, err
 	}
 
-	// Check if Root port AER is supported for this device
-	if _, err := os.Stat(filepath.Join(deviceDir, "aer_rootport_total_err_cor")); os.IsNotExist(err) {
-		return &counters, nil
-	}
-
-	err = parseRootPortAerCounters(deviceDir, &counters)
-	if err != nil {
-		return nil, err
-	}
-
 	return &counters, nil
 }
 
-// parseAerCounters scans predefined files in /sys/bus/pci/devices/<location> directory and gets their contents.
+// AerCounters returns AER counters for a PCI device.
 func (pci *PciDevice) AerCounters(fs FS) (*PciDeviceAerCounters, error) {
 	deviceName := fmt.Sprintf("%04x:%02x:%02x.%x", pci.Location.Segment, pci.Location.Bus, pci.Location.Device, pci.Location.Function)
 	deviceDir := fs.sys.Path(pciDevicesPath, deviceName)
 
-	return parseAerCounters(deviceDir)
-}
-
-// parseRootPortAerCounters parses root port AER error counters from
-// /sys/bus/pci/devices/<location>/aer_rootport_total_err_* files.
-// If a file doesn't exist, the corresponding pointer field is set to nil.
-func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) error {
-	filenames := []string{
-		"aer_rootport_total_err_cor",
-		"aer_rootport_total_err_nonfatal",
-		"aer_rootport_total_err_fatal",
+	pciDeviceAerCounters, err := parseAerCounters(deviceDir)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, filename := range filenames {
-		var fieldValue *uint64
-		path := filepath.Join(deviceDir, filename)
-		value, err := util.SysReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read file %q: %w", path, err)
-		}
-		valueStr := strings.TrimSpace(string(value))
-		if valueStr != "" {
-			v, err := strconv.ParseUint(valueStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("error parsing %s: %w", filename, err)
-			}
-			fieldValue = &v
-		}
-
-		switch filename {
-		case "aer_rootport_total_err_cor":
-			counters.RootPortTotalErrCor = fieldValue
-		case "aer_rootport_total_err_nonfatal":
-			counters.RootPortTotalErrNonFatal = fieldValue
-		case "aer_rootport_total_err_fatal":
-			counters.RootPortTotalErrFatal = fieldValue
-		}
-	}
-
-	return nil
+	return pciDeviceAerCounters, nil
 }
 
 // parseCorrectableAerCounters parses correctable error counters in

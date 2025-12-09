@@ -19,15 +19,17 @@ import (
 	"path/filepath"
 )
 
+// Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)
+// and the parsing functions (parseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
+// are moved to pci_device_aer.go
+// The public types (AerCounters, AllAerCounters) and their behavior are retained as is in this file for backward compatibility.
+
+// AerCounters contains AER counters from files in /sys/class/net/<iface>/device
+// for single interface (iface).
 type AerCounters struct {
 	Name string // Interface name
 	PciDeviceAerCounters
 }
-
-// Note: The generic AER types (CorrectableAerCounters, UncorrectableAerCounters, PciDeviceAerCounters)
-// and the parsing functions (parseAerCounters, parseCorrectableAerCounters, parseUncorrectableAerCounters)
-// are defined in pci_device.go
-// This file maintains the public API methods for backward compatibility and delegates to the shared implementation in pci_device.go.
 
 // AllAerCounters is collection of AER counters for every interface (iface) in /sys/class/net.
 // The map keys are interface (iface) names.

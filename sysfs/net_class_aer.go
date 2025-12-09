@@ -47,10 +47,6 @@ func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 	if err != nil {
 		return nil, err
 	}
-	if counters == nil {
-		// AER not supported for this device
-		return nil, nil
-	}
 
 	// Convert PciDeviceAerCounters to AerCounters by embedding and adding Name
 	return &AerCounters{

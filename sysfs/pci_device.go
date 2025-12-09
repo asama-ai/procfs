@@ -99,8 +99,6 @@ type PciDevice struct {
 	PowerState    *PciPowerState // /sys/bus/pci/devices/<Location>/power_state
 }
 
-// The map keys are interface (iface) names.
-
 func (pd PciDevice) Name() string {
 	return pd.Location.String()
 }

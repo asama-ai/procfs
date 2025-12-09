@@ -83,9 +83,9 @@ func (fs FS) RootPortAerCounters() (AllRootPortAerCounters, error) {
 	return allRootPortAerCounters, nil
 }
 
-// parsePortAerCounters parses port AER error counters from
-// /sys/bus/pci/devices/<location>/aer_rootport_total_err_* files.
-// If a file doesn't exist, the corresponding pointer field is set to nil.
+// parseRootPortAerCounters parses root port AER error counters from
+// /sys/bus/pci/drivers/pcieport/<device>/aer_rootport_total_err_* files.
+// Returns nil if AER is not supported for the device.
 func parseRootPortAerCounters(deviceDir string) (*RootPortAerCounters, error) {
 	filenames := []string{
 		"aer_rootport_total_err_cor",

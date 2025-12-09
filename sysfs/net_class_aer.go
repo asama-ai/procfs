@@ -69,15 +69,14 @@ func (fs FS) AerCounters() (AllAerCounters, error) {
 	path := fs.sys.Path(netclassPath)
 	allAerCounters := AllAerCounters{}
 	for _, devicePath := range devices {
-		pciCounters, err := parseAerCounters(filepath.Join(path, devicePath, "device"))
+		counters, err := parseAerCounters(filepath.Join(path, devicePath, "device"))
 		if err != nil {
 			return nil, err
 		}
-		counters := AerCounters{
-			PciDeviceAerCounters: *pciCounters,
+		allAerCounters[devicePath] = AerCounters{
 			Name:                 devicePath,
+			PciDeviceAerCounters: *counters,
 		}
-		allAerCounters[devicePath] = counters
 	}
 
 	return allAerCounters, nil

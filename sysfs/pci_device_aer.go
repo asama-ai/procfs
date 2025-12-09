@@ -16,7 +16,6 @@
 package sysfs
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -74,12 +73,14 @@ type UncorrectableAerCounters struct {
 // /sys/bus/pci/devices/<Location>/ or /sys/class/<class_name>/<device_name>/device
 // and returns a PciDeviceAerCounters struct.
 func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
+	// Check if AER is supported for this device
+	correctablePath := filepath.Join(deviceDir, "aer_dev_correctable")
+	if _, err := os.Stat(correctablePath); os.IsNotExist(err) {
+		return nil, nil
+	}
+
 	counters := PciDeviceAerCounters{}
 	err := parseCorrectableAerCounters(deviceDir, &counters.Correctable)
-	if err != nil {
-		return nil, err
-	}
-	err = parseUncorrectableAerCounters(deviceDir, "fatal", &counters.Fatal)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,16 @@ func parseAerCounters(deviceDir string) (*PciDeviceAerCounters, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = parseUncorrectableAerCounters(deviceDir, "fatal", &counters.Fatal)
+	if err != nil {
+		return nil, err
+	}
 
-	// Root port files are optional - parseRootPortAerCounters sets pointers to nil if files don't exist
+	// Check if Root port AER is supported for this device
+	if _, err := os.Stat(filepath.Join(deviceDir, "aer_rootport_total_err_cor")); os.IsNotExist(err) {
+		return &counters, nil
+	}
+
 	err = parseRootPortAerCounters(deviceDir, &counters)
 	if err != nil {
 		return nil, err
@@ -111,40 +120,33 @@ func (pci *PciDevice) AerCounters(fs FS) (*PciDeviceAerCounters, error) {
 func parseRootPortAerCounters(deviceDir string, counters *PciDeviceAerCounters) error {
 	filenames := []string{
 		"aer_rootport_total_err_cor",
-		"aer_rootport_total_err_fatal",
 		"aer_rootport_total_err_nonfatal",
+		"aer_rootport_total_err_fatal",
 	}
 
 	for _, filename := range filenames {
+		var fieldValue *uint64
 		path := filepath.Join(deviceDir, filename)
 		value, err := util.SysReadFile(path)
-		var fieldValue *uint64
-		if errors.Is(err, os.ErrNotExist) {
-			// File doesn't exist, set to nil
-			fieldValue = nil
-		} else if err != nil {
+		if err != nil {
 			return fmt.Errorf("failed to read file %q: %w", path, err)
-		} else {
-			valueStr := strings.TrimSpace(string(value))
-			if valueStr != "" {
-				v, err := strconv.ParseUint(valueStr, 10, 64)
-				if err != nil {
-					return fmt.Errorf("error parsing %s: %w", filename, err)
-				}
-				val := new(uint64)
-				*val = v
-				fieldValue = val
+		}
+		valueStr := strings.TrimSpace(string(value))
+		if valueStr != "" {
+			v, err := strconv.ParseUint(valueStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("error parsing %s: %w", filename, err)
 			}
-			// If valueStr is empty, fieldValue remains nil
+			fieldValue = &v
 		}
 
 		switch filename {
 		case "aer_rootport_total_err_cor":
 			counters.RootPortTotalErrCor = fieldValue
-		case "aer_rootport_total_err_fatal":
-			counters.RootPortTotalErrFatal = fieldValue
 		case "aer_rootport_total_err_nonfatal":
 			counters.RootPortTotalErrNonFatal = fieldValue
+		case "aer_rootport_total_err_fatal":
+			counters.RootPortTotalErrFatal = fieldValue
 		}
 	}
 

@@ -4750,7 +4750,7 @@ Directory: fixtures/sys/bus/pci/drivers/i915
 Mode: 755
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: fixtures/sys/bus/pci/drivers/pcieport
-Mode: 775
+Mode: 755
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/bus/pci/drivers/pcieport/0000:00:02.1
 SymlinkTo: ../../../../devices/pci0000:00/0000:00:02.1

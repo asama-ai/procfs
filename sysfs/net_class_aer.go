@@ -43,6 +43,10 @@ func (fs FS) AerCountersByIface(devicePath string) (*AerCounters, error) {
 		return nil, err
 	}
 
+	if counters == nil {
+		return &AerCounters{}, nil
+	}
+
 	// Convert PciDeviceAerCounters to AerCounters by embedding and adding Name
 	return &AerCounters{
 		PciDeviceAerCounters: *counters,
@@ -63,6 +67,9 @@ func (fs FS) AerCounters() (AllAerCounters, error) {
 		counters, err := parseAerCounters(filepath.Join(path, devicePath, "device"))
 		if err != nil {
 			return nil, err
+		}
+		if counters == nil {
+			return AllAerCounters{}, nil
 		}
 		allAerCounters[devicePath] = AerCounters{
 			Name:                 devicePath,

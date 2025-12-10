@@ -301,7 +301,7 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 		valueStr, err := util.SysReadFile(name)
 		if err != nil {
 			if os.IsNotExist(err) {
-				continue
+				continue // SR-IOV files are optional
 			}
 			return nil, fmt.Errorf("failed to read SR-IOV file %q %s: %w", name, device.Location, err)
 		}
@@ -377,7 +377,7 @@ func (fs FS) parsePciDevice(name string) (*PciDevice, error) {
 		valueStr, err := util.SysReadFile(name)
 		if err != nil {
 			if os.IsNotExist(err) {
-				continue
+				continue // Power management files are optional
 			}
 			return nil, fmt.Errorf("failed to read power management file %q %s: %w", name, device.Location, err)
 		}

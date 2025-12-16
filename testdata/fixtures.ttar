@@ -15807,7 +15807,7 @@ Timeout 0
 NonFatalErr 0
 CorrIntErr 0
 HeaderOF 0
-
+TOTAL_ERR_COR 0
 Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:03.0/aer_dev_fatal
@@ -15830,7 +15830,7 @@ BlockedTLP 0
 AtomicOpBlocked 0
 TLPBlockedErr 0
 PoisonTLPBlocked 0
-
+TOTAL_ERR_FATAL 0
 Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:03.0/aer_dev_nonfatal
@@ -15853,7 +15853,7 @@ BlockedTLP 0
 AtomicOpBlocked 0
 TLPBlockedErr 0
 PoisonTLPBlocked 0
-
+TOTAL_ERR_NONFATAL 0
 Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/sys/devices/pci0000:00/0000:00:03.0/aer_rootport_total_err_cor
